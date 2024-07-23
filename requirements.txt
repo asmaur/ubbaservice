@@ -1,0 +1,10 @@
+django
+djangorestframework
+markdown
+django-filter
+django-celery-beat
+pillow
+django-custom-admin-pages==1.2.5
+drf_social_oauth2==2.2.1
+django-cors-headers
+openpyxl

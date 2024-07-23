@@ -1,0 +1,25 @@
+<div id="extra_links_wrapper" class="module">
+    <table>
+        <caption>
+            <a class="section" title="Tag Pages">Tag Pages</a>
+        </caption>
+        <tr>
+            <th scope="row">
+                <a href="{% url 'admin:bulk_create' %}">
+                    Create Multiple Tags
+                </a>
+            </th>
+            <td></td>
+        </tr>
+        <tr>
+            <th scope="row">
+                <a href="{% url 'admin:export_to_csv' %}">
+                    Export Tags
+                </a>
+            </th>
+            <td></td>
+        </tr>
+    </table>
+</div>
+
+{% include 'admin/app_list.html' %}
