@@ -23,6 +23,13 @@
     70005 -> deleted
 """
 
+UserErrorMessage = {
+    "not_found": {
+        "error": "00004",
+        "detail": "User not found",
+    },
+}
+
 PetErrorMessage = {
     "not_found": {
         "error": "20004",
@@ -33,9 +40,10 @@ PetErrorMessage = {
         "detail": "Pet validation error"
     },
     "deleted": {
-        "error": "30005",
+        "error": "20005",
         "detail": "Pet deleted",
     },
+    
 }
 
 
@@ -62,15 +70,23 @@ TagErrorMessage = {
 TutorErrorMessage = {
     "not_found": {
         "error": "10004",
-        "detail": "Contact not found",
+        "detail": "Tutor not found",
     },
     "validation_error": {
         "error": "10002",
-        "detail": "Contact validation error"
+        "detail": "Tutor validation error"
     },
     "deleted": {
         "error": "10005",
-        "detail": "Contact deleted",
+        "detail": "Tutor deleted",
+    },
+    "not_tutor_error": {
+        "error": "10012",
+        "detail": "You're not the tutor of this pet",
+    },
+    "already_tutor_error": {
+        "error": "10013",
+        "detail": "You're already the tutor of this pet",
     }
 }
 

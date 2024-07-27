@@ -59,6 +59,8 @@ class TutorPublicSerializer(ModelSerializer):
         fields = (
             "id",
             "name",
+            "email",
+            "image",
             "contacts"
         )
 

@@ -26,6 +26,31 @@ urlpatterns = [
         "pets/tag-status/", views.PetViewset.as_view(
             {"post": "check_tag_status"}
         )
+    ),
+    path(
+        "pets/upload-image/<str:pk>/", views.PetViewset.as_view(
+            {"patch": "upload_image"}
+        )
+    ),
+    path(
+        "pets/pet-lost/<str:pk>/", views.PetViewset.as_view(
+            {"patch": "lost"}
+        )
+    ),
+    path(
+        "pets/pet-alive/<str:pk>/", views.PetViewset.as_view(
+            {"patch": "deceased"}
+        )
+    ),
+    path(
+        "tutors/find-tutor/", views.TutorViewset.as_view(
+            {"post": "find_tutor"}
+        )
+    ),
+    path(
+        "tutors/tutor-image/<str:pk>/", views.TutorViewset.as_view(
+            {"patch": "update_image"}
+        )
     )
     # path("pets/public/", views.PetPublicDetail.as_view()),
     # path("pets/public/@<str:petname>", views.PetProfileDetail.as_view())

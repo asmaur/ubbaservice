@@ -11,13 +11,15 @@ from rest_framework.validators import ValidationError
 import traceback
 from core.exceptions import (
     RegisteredTagException,
-    PetOwnerException
+    NotTutorException,
+    AlreadyTutorException
 )
 from core.error_messages import (
     TagErrorMessage,
     ContactErrorMessage,
     TutorErrorMessage,
     PetErrorMessage,
+    UserErrorMessage,
 )
 from core.pagination import StandardResultsSetPagination
 from core.models import (
@@ -38,6 +40,9 @@ from .serializers import (
     PetnameSerializer,
     ContactSerializer,
     TagSerializer
+)
+from account.models import (
+    User
 )
 
 
@@ -139,7 +144,7 @@ class PetViewset(viewsets.ModelViewSet):
     def get_queryset(self, ):
         # request = self.get_serializer_context().get('request')
         # uid = request.user.uid  #.get('uid')
-        return Pet.objects.filter(tutor__id="f52e60fc-f7d3-47b2-a39b-a9878b802188")
+        return Pet.objects.filter(tutor__id="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
 
     # def get_filter_queryset(self, ):
     #     request = self.get_serializer_context().get('request')
@@ -156,7 +161,7 @@ class PetViewset(viewsets.ModelViewSet):
             tag = Tag.objects.get(
                 uuid=data.pop("tag"),
             )
-            tutor = Tutor.objects.get(pk="f52e60fc-f7d3-47b2-a39b-a9878b802188")
+            tutor = Tutor.objects.get(pk="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
             # self.get_tutor()
 
             if tag.registered:
@@ -276,7 +281,7 @@ class PetViewset(viewsets.ModelViewSet):
                 uuid=data.pop("tag"),
             )
             pet = Pet.objects.get(tag=tag)
-            tutor = Tutor.objects.get(pk="f52e60fc-f7d3-47b2-a39b-a9878b802188")
+            tutor = Tutor.objects.get(pk="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
             # self.get_tutor()
             serializer = PetSerializer(
                 data={
@@ -284,7 +289,8 @@ class PetViewset(viewsets.ModelViewSet):
                     **data,
                 },
                 partial=True,
-                instance=pet
+                instance=pet,
+                context={'request': request}
             )
 
             if serializer.is_valid(raise_exception=True):
@@ -330,35 +336,85 @@ class PetViewset(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         pass
 
-    @action(detail=True)
-    def lost(self, request, *args, **kwargs):
-        pass
-
-    @action(detail=True)
-    def deceased(self, request, *args, **kwargs):
-        pass
-
-    @action(methods=["PUT"], detail=True)
-    def upload_image(self, request, pk=None, *args, **kwargs):
+    @action(methods=["PATCH"], detail=True)
+    def lost(self, request, pk=None, *args, **kwargs):
         try:
+            data = request.data
             pet = get_object_or_404(Pet, pk=pk)
-            pet.image = request.FILES.get("image")
+            pet.lost = data.get("lost")
             pet.save()
             return Response(
-                PetSerializer(pet).data,
+                PetSerializer(pet, context={'request': request}).data,
                 status=status.HTTP_200_OK
             )
         except Http404:
             return Response(
-                {"detail": "Pet não encontrado."},
+                data=PetErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            traceback.print_exception(e)
             return Response(
-                {
-                        "error": type(e).__name__,
-                        "message": str(e),
-                        "at": traceback.format_exc()
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(methods=["PATCH"], detail=True)
+    def deceased(self, request, pk=None, *args, **kwargs):
+        try:
+            data = request.data
+            pet = get_object_or_404(Pet, pk=pk)
+            pet.alive = data.get("alive")
+            pet.save()
+            return Response(
+                PetSerializer(pet, context={'request': request}).data,
+                status=status.HTTP_200_OK
+            )
+        except Http404:
+            return Response(
+                data=PetErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            traceback.print_exception(e)
+            return Response(
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(methods=["PATCH"], detail=True)
+    def upload_image(self, request, pk=None, *args, **kwargs):
+        try:
+            pet = get_object_or_404(Pet, pk=pk)
+            pet.image = request.FILES.get("pet-image")
+            pet.save()
+            return Response(
+                PetSerializer(pet, context={'request': request}).data,
+                status=status.HTTP_200_OK
+            )
+        except Http404:
+            return Response(
+                data=PetErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            traceback.print_exception(e)
+            return Response(
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
@@ -408,26 +464,54 @@ class PetViewset(viewsets.ModelViewSet):
             data = request.data
             current_tutor = Tutor.objects.get(pk=data.get("current_tutor_id"))
             new_tutor = Tutor.objects.get(pk=data.get("new_tutor_id"))
-            tag = Tag.objects.get(uuid=data.get("uuid"))
+            tag = Tag.objects.get(uuid=data.get("tag"))
             pet = Pet.objects.get(tag=tag)
 
-            if pet.tutor.id is not current_tutor.id:
-                raise PetOwnerException
+            if pet.tutor.id != current_tutor.id:
+                raise NotTutorException
+
+            if pet.tutor.id == new_tutor.id:
+                raise AlreadyTutorException
+
             pet.tutor = new_tutor
             pet.save()
             return Response(
-                {"detail": "tranfert okay"},
+                {
+                    "detail": "Pet Transfer successfull"
+                },
                 status=status.HTTP_202_ACCEPTED
             )
         except Tutor.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                data=TutorErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
         except Tag.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        except PetOwnerException:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        except Exception as ex:
-            traceback.print_exception(ex)
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                data=TagErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except NotTutorException:
+            return Response(
+                data=TutorErrorMessage.get("not_tutor_error"),
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except AlreadyTutorException:
+            return Response(
+                data=TutorErrorMessage.get("already_tutor_error"),
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            traceback.print_exception(e)
+            return Response(
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(methods=["POST"], detail=False, url_path="/tag-status/")
     def check_tag_status(self, request, *args, **kwargs):
@@ -443,9 +527,21 @@ class PetViewset(viewsets.ModelViewSet):
             serializer = TagSerializer(tag)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Tag.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        except Exception as ex:
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                data=TagErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            traceback.print_exception(e)
+            return Response(
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class TutorViewset(viewsets.ViewSet):
@@ -454,19 +550,65 @@ class TutorViewset(viewsets.ViewSet):
     permission_classes = []
     authentication_classes = []
     parser_classes = [MultiPartParser, JSONParser]
+    
+    def list(self, request, *args, **kwargs):
+        return Response(TutorSerializer(self.queryset, many=True).data)
 
     def retrieve(self, request, pk=None, *args, **kwargs):
         try:
             tutor = Tutor.objects.get(pk=pk)
-            serializer = TutorSerializer(tutor)
+            serializer = TutorSerializer(tutor, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Tutor.DoesNotExist:
             return Response(
-                {"detail": "tutor does not exist", "code": "gsgsgsgs"},
+                data=TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
-        except Exception as ex:
-            traceback.print_exception(ex)
+        except Exception as e:
+            traceback.print_exception(e)
+            return Response(
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(methods=["POST"], detail=False)
+    def find_tutor(self, request, *args, **kwargs):
+        try:
+            data = request.data
+            user = User.objects.get(email=data.get("email"))
+            tutor = Tutor.objects.get(user=user)
+            return Response(
+                TutorSerializer(tutor, context={'request': request}).data,
+                status=status.HTTP_200_OK
+            )
+        except User.DoesNotExist as e:
+            traceback.print_exception(e)
+            return Response(
+                data=UserErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Tutor.DoesNotExist as e:
+            traceback.print_exception(e)
+            return Response(
+                data=TutorErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            traceback.print_exception(e)
+            return Response(
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def update(self, request, pk=None, *args, **kwargs):
         try:
@@ -475,7 +617,8 @@ class TutorViewset(viewsets.ViewSet):
             serializer = TutorSerializer(
                 data=data,
                 instance=tutor,
-                partial=True
+                partial=True,
+                context={'request': request}
             )
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
@@ -483,36 +626,32 @@ class TutorViewset(viewsets.ViewSet):
         except Tutor.DoesNotExist:
             return Response()
 
-    @action(methods=["PUT"], detail=True)
+    @action(methods=["PATCH"], detail=True, url_path="/tutor-image/")
     def update_image(self, request, pk=None, *args, **kwargs):
         try:
             tutor = get_object_or_404(Tutor, pk=pk)
-            tutor.image = request.FILES.get("image")
+            tutor.image = request.FILES.get("tutor-image")
             tutor.save()
             return Response(
-                TutorSerializer(tutor).data,
+                TutorSerializer(tutor, context={'request': request}).data,
                 status=status.HTTP_200_OK
             )
         except Http404:
             return Response(
-                {"detail": "Pet não encontrado."},
+                data=TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            traceback.print_exception(e)
             return Response(
-                {
-                        "error": type(e).__name__,
-                        "message": str(e),
-                        "at": traceback.format_exc()
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-    # @action(methods=["GET"], detail=False)
-    # def contacts(self, request, *args, **kwargs):
-    #     """Return tutors contacts
-    #     """
-    #     pass
 
 
 class PetNameViewset(viewsets.ViewSet):
@@ -562,12 +701,12 @@ class ContactViewset(viewsets.ViewSet):
     def get_tutor(self, request):
         # request = self.get_serializer_context().get('request')
 
-        return Tutor.objects.get(pk="f52e60fc-f7d3-47b2-a39b-a9878b802188")
+        return Tutor.objects.get(pk="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
         # user=request.user)
 
     def list(self, request, *args, **kwargs):
         try:
-            contacts = Contact.objects.filter(tutor__id="f52e60fc-f7d3-47b2-a39b-a9878b802188")
+            contacts = Contact.objects.filter(tutor__id="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
             # self.get_tutor(request))
             serializer = ContactSerializer(contacts, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)

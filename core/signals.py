@@ -7,7 +7,11 @@ from core.models import Tutor, Pet, Tag
 @receiver(post_save, sender=User)
 def create_tutor(sender, instance, created, **kwargs):
     if created:
-        Tutor.objects.create(user=instance, name=instance.name)
+        Tutor.objects.create(
+            user=instance,
+            name=instance.name,
+            email=instance.email
+        )
 
 
 @receiver(post_save, sender=Tag)

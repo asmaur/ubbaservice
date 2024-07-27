@@ -99,7 +99,11 @@ class Tutor(models.Model):
         _("Complete Name"),
         max_length=50,
         blank=True,
-        null=True
+    )
+    email = models.EmailField(
+        _("Email"),
+        max_length=254,
+        unique=True
     )
     user = models.OneToOneField(
         "account.User",
@@ -152,6 +156,11 @@ class Contact(models.Model):
     twitter = models.CharField(_(""), max_length=200, blank=True, null=True)
     facebook = models.CharField(_(""), max_length=200, blank=True, null=True)
     tiktok = models.CharField(_(""), max_length=200, blank=True, null=True)
+    youtube = models.CharField(_(""), max_length=200, blank=True, null=True)
+    snapchat = models.CharField(_(""), max_length=200, blank=True, null=True)
+    wechat = models.CharField(_(""), max_length=200, blank=True, null=True)
+    telegram = models.CharField(_(""), max_length=200, blank=True, null=True)
+    threads = models.CharField(_(""), max_length=200, blank=True, null=True)
     mine = models.BooleanField(_(""), default=True)
     tutor = models.ForeignKey(
         "core.Tutor",

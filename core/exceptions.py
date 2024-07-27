@@ -2,5 +2,9 @@ class RegisteredTagException(Exception):
     pass
 
 
-class PetOwnerException(Exception):
+class NotTutorException(Exception):
+    pass
+
+
+class AlreadyTutorException(Exception):
     pass
