@@ -47,8 +47,7 @@ THIRD_PARTY_APPS = [
     'oauth2_provider',
     'social_django',
     'drf_social_oauth2',
-    # "django_custom_admin_pages",
-    # "django_custom_admin_pages.admin.CustomAdminConfig"
+    'corsheaders',
 ]
 
 LOCAL_APPS = [
@@ -64,6 +63,8 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    # cors
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -84,6 +85,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # social_django
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -180,10 +184,18 @@ AUTHENTICATION_BACKENDS = (
     'drf_social_oauth2.backends.DjangoOAuth2',
     'django.contrib.auth.backends.ModelBackend',
 )
-ACTIVATE_JWT = False
-CORS_ORIGIN_ALLOW_ALL = True
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-#     'PAGE_SIZE': 100
-# }
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',  
+        'drf_social_oauth2.authentication.SocialAuthentication',
+    )
+}
+CORS_ALLOWED_ORIGINS = [
+    # "*"
+    # "http://localhost:3000",
+    # "http://127.0.0.1:3000"
+]
+
+ACTIVATE_JWT = True
+CORS_ORIGIN_ALLOW_ALL = True
