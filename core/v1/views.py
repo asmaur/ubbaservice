@@ -1,5 +1,5 @@
 import re
-from rest_framework import viewsets
+from rest_framework import viewsets, views
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, JSONParser
@@ -8,6 +8,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from django.shortcuts import Http404, get_object_or_404
 from rest_framework.validators import ValidationError
+from rest_framework import permissions
+from oauth2_provider.contrib.rest_framework.authentication import (
+    OAuth2Authentication
+)
+from oauth2_provider.contrib.rest_framework.permissions import (
+    TokenHasReadWriteScope, TokenHasScope
+)
 import traceback
 from core.exceptions import (
     RegisteredTagException,
@@ -46,51 +53,84 @@ from account.models import (
 )
 
 
-# class PetPublicDetail(APIView):
-#     """Public view for pet by uuid
+class ReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.method in permissions.SAFE_METHODS
 
-#     Args:
-#         APIView (_type_): _description_
-#     """
 
-#     def get_object(self, uuid):
-#         try:
-#             return Pet.objects.get(uuid=uuid)
-#         except Pet.DoesNotExist:
-#             raise Http404
+class PetPublic(viewsets.ViewSet):
+    """Public view for pet by uuid
 
-#     def get(self, request, format=None):
-#         try:
-#             petUUID = PetUUID.objects.get(uuid=uuid)
-#             if not petUUID.registered:
-#                 return Response(
-#                     {
-#                         "detail": "Unregistered QR Code",
-#                         "registered": petUUID.registered
-#                     },
-#                     status=status.HTTP_202_ACCEPTED
-#                 )
+    Args:
+        APIView (_type_): _description_
+    """
+    permission_classes = [ReadOnly]
+    queryset = Pet.objects.all()
 
-#             pet = self.get_object(petUUID)
-#             serializer = PetPublicSerializer(pet)
+    def get_object(self, uuid):
+        try:
+            return Pet.objects.get(uuid=uuid)
+        except Pet.DoesNotExist:
+            raise Http404
 
-#             return Response(serializer.data, status=status.HTTP_200_OK)
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            tag = Tag.objects.get(uuid=kwargs.get("pk"))
+            pet = Pet.objects.get(tag=tag)
+            serializer = PetDetailSerializer(pet, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Pet.DoesNotExist:
+            return Response(
+                data=PetErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Tag.DoesNotExist:
+            return Response(
+                data=TagErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            traceback.print_exception(e)
+            return Response(
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-#         except PetUUID.DoesNotExist:
-#             return Response(
-#                 {"detail": "Invalid Qr code"},
-#                 status=status.HTTP_404_NOT_FOUND
-#             )
-#         except Http404:
-#             return Response(
-#                 {"detail": "Pet not found"},
-#                 status=status.HTTP_404_NOT_FOUND
-#             )
-#         except ValueError:
-#             return Response(
-#                 {"detail": "Invalid pet parameters"},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
+    @action(methods=["GET"], detail=True, url_path="/tag-status/")
+    def check_tag_status(self, request, pk=None, *args, **kwargs):
+        """return tag status
+
+        Args:
+            request (_type_): _description_
+        """
+        try:
+            # data = request.data
+            tag = Tag.objects.get(uuid=pk)#data.get("uuid"))
+            # if tag.exported:
+            serializer = TagSerializer(tag)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Tag.DoesNotExist:
+            return Response(
+                data=TagErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            traceback.print_exception(e)
+            return Response(
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 
 # class PetProfileDetail(APIView):
@@ -122,16 +162,16 @@ from account.models import (
 #             )
 
 
-class PetProfileDetailView(viewsets.ViewSet):
-    serializer_class = PetSerializer
-    queryset = Pet.objects.all()
+# class PetProfileDetailView(viewsets.ViewSet):
+#     serializer_class = PetSerializer
+#     queryset = Pet.objects.all()
 
 
 class PetViewset(viewsets.ModelViewSet):
     serializer_class = PetSerializer
     queryset = Pet.objects.all()
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [OAuth2Authentication]
     parser_classes = [MultiPartParser, JSONParser]
     pagination_class = StandardResultsSetPagination
 
@@ -144,7 +184,8 @@ class PetViewset(viewsets.ModelViewSet):
     def get_queryset(self, ):
         # request = self.get_serializer_context().get('request')
         # uid = request.user.uid  #.get('uid')
-        return Pet.objects.filter(tutor__id="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
+        tutor = self.get_tutor()
+        return Pet.objects.filter(tutor=tutor)#tutor__id="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
 
     # def get_filter_queryset(self, ):
     #     request = self.get_serializer_context().get('request')
@@ -245,6 +286,7 @@ class PetViewset(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         try:
+            # print(request.user)
             queryset = self.get_queryset()
             # serializer = PetMiniSerializer(pets, many=True)
             page = self.paginate_queryset(queryset)
@@ -253,19 +295,19 @@ class PetViewset(viewsets.ModelViewSet):
                     page,
                     many=True,
                     context={'request': request}
-                ) # self.get_serializer(page, many=True)
+                )
                 return self.get_paginated_response(serializer.data)
 
             serializer = PetSerializer(
                 queryset,
                 many=True,
                 context={'request': request}
-            ) # self.get_serializer(queryset, many=True)
+            )
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -311,7 +353,7 @@ class PetViewset(viewsets.ModelViewSet):
                 TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         except ValidationError as e:
             traceback.print_exception(e)
             return Response(
@@ -547,10 +589,10 @@ class PetViewset(viewsets.ModelViewSet):
 class TutorViewset(viewsets.ViewSet):
     serializer_class = TutorSerializer
     queryset = Tutor.objects.all()
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [OAuth2Authentication]
     parser_classes = [MultiPartParser, JSONParser]
-    
+
     def list(self, request, *args, **kwargs):
         return Response(TutorSerializer(self.queryset, many=True).data)
 
@@ -576,6 +618,31 @@ class TutorViewset(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(methods=["GET"], detail=False, url_path="/tutor/")
+    def get_tutor(self, request, *args, **kwargs):
+        try:
+            tutor = Tutor.objects.get(user=request.user)
+            return Response(TutorSerializer(tutor).data, status=status.HTTP_200_OK)
+        except Tutor.DoesNotExist as e:
+            traceback.print_exception(e)
+            return Response(
+                data=TutorErrorMessage.get("not_found"),
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            traceback.print_exception(e)
+            return Response(
+                data={
+                    "error_type": type(e).__name__,
+                    "message": str(e),
+                    "at": traceback.format_exc(),
+                    "error": "99991"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+            
+    
     @action(methods=["POST"], detail=False)
     def find_tutor(self, request, *args, **kwargs):
         try:
@@ -686,13 +753,12 @@ class PetNameViewset(viewsets.ViewSet):
 class ContactViewset(viewsets.ViewSet):
     serializer_class = ContactSerializer
     queryset = Contact.objects.all()
-    permission_classes = []
-    authentication_classes = []
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [OAuth2Authentication]
 
-    def get_queryset(self, ):
-        # request = self.get_serializer_context().get('request')
-        # uid = request.user.uid  #.get('uid')
-        return Contact.objects.filter(tutor__id=1)
+    # def get_queryset(self, ):
+    #     request = self.get_serializer_context().get('request')
+    #     return Contact.objects.filter(tutor__id=1)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -700,14 +766,11 @@ class ContactViewset(viewsets.ViewSet):
 
     def get_tutor(self, request):
         # request = self.get_serializer_context().get('request')
-
-        return Tutor.objects.get(pk="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
-        # user=request.user)
+        return Tutor.objects.get(user=request.user)
 
     def list(self, request, *args, **kwargs):
         try:
-            contacts = Contact.objects.filter(tutor__id="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
-            # self.get_tutor(request))
+            contacts = Contact.objects.filter(tutor=self.get_tutor(request))
             serializer = ContactSerializer(contacts, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 

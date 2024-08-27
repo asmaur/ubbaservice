@@ -28,6 +28,10 @@ UserErrorMessage = {
         "error": "00004",
         "detail": "User not found",
     },
+    "unauthorized": {
+        "error": "00001",
+        "detail": "Unauthorized",
+    },
 }
 
 PetErrorMessage = {

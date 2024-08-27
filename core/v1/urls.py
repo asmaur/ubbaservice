@@ -9,6 +9,7 @@ router = SimpleRouter()
 router.register('pets', views.PetViewset)
 router.register('tutors', views.TutorViewset)
 router.register('tutors-contact', views.ContactViewset)
+router.register('p', views.PetPublic, basename="p")
 
 urlpatterns = [
     path(
@@ -51,8 +52,18 @@ urlpatterns = [
         "tutors/tutor-image/<str:pk>/", views.TutorViewset.as_view(
             {"patch": "update_image"}
         )
-    )
-    # path("pets/public/", views.PetPublicDetail.as_view()),
+    ),
+    path(
+        "tutors/tutor/", views.TutorViewset.as_view(
+            {"get": "get_tutor"}
+        )
+    ),
+    path(
+        "p/tag-status/<str:pk>/", views.PetPublic.as_view(
+            {"get": "check_tag_status"}
+        )
+    ),
+    # path("pets/public/<str:pk>/", views.PetPublicDetail.as_view()),
     # path("pets/public/@<str:petname>", views.PetProfileDetail.as_view())
 ]
 

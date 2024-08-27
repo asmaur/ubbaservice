@@ -117,7 +117,7 @@ class Migration(migrations.Migration):
             name='Tag',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('uuid', models.CharField(default=core.models.generateUUID, max_length=50, unique=True, verbose_name='uuid')),
+                ('uuid', models.CharField(default=core.models.generate_tag_id, max_length=50, unique=True, verbose_name='uuid')),
                 ('registered', models.BooleanField(default=False, verbose_name='Scanned')),
                 ('exported', models.BooleanField(default=False, verbose_name='Exported')),
                 ('url', models.URLField(verbose_name='tag url')),

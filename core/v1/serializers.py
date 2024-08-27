@@ -25,11 +25,22 @@ class ContactPublicSerializer(ModelSerializer):
     class Meta:
         model = Contact
         fields = (
+            "id",
             "name",
             "email",
+            "mine",
             "phone",
             "social",
             "emergency",
+            "instagram",
+            "twitter",
+            "facebook",
+            "tiktok",
+            "youtube",
+            "snapchat",
+            "wechat",
+            "telegram",
+            "threads"
         )
 
 
@@ -40,14 +51,20 @@ class ContactSerializer(ModelSerializer):
             "id",
             "name",
             "email",
+            "mine",
             "phone",
             "social",
-            "mine",
             "emergency",
+            "whatsapp",
             "instagram",
+            "twitter",
+            "facebook",
             "tiktok",
-            "whatsapp"
-            # "tutor",
+            "youtube",
+            "snapchat",
+            "wechat",
+            "telegram",
+            "threads"
         )
 
 
@@ -87,6 +104,7 @@ class PetPublicSerializer(ModelSerializer):
         model = Pet
         fields = (
                 "tag",
+                "rup",
                 "name",
                 "race",
                 "birth_date",
@@ -106,6 +124,7 @@ class PetSerializer(ModelSerializer):
         model = Pet
         fields = (
             "id",
+            "rup",
             "tag",
             "name",
             "nickname",
@@ -135,6 +154,7 @@ class PetMiniSerializer(ModelSerializer):
         fields = (
             # "id",
             "tag",
+            "rup",
             "name",
             "registered",
             "race",
@@ -156,6 +176,7 @@ class PetDetailSerializer(ModelSerializer):
         model = Pet
         fields = (
             "id",
+            "rup",
             "name",
             "nickname",
             "race",

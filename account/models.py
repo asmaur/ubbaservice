@@ -38,6 +38,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     MANAGER = 'manager'
     PETSITTER = 'petsitter'
     VETERINARIAN = 'veterinarian'
+    
+    GOOGLE_AUTH = "google",
+    FACEBOOK_AUTH = "facebook",
+    TWITTER_AUTH = "twiter",
+    EMAIL_AUTH = "email",
+    TIKTOK_AUTH = "tiktok",
+    APPLE_AUTH = "apple",
+    
 
     ROLES_CHOICES = (
         (AGENT, 'Agent'),
@@ -46,12 +54,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         (PETSITTER, 'Petsitter'),
         (VETERINARIAN, 'Veterinarian')
     )
+    AUTH_PROVIDERS = (
+        (GOOGLE_AUTH, "Google"),
+        (FACEBOOK_AUTH, "Facebook"),
+        (TWITTER_AUTH, "Twitter"),
+        (EMAIL_AUTH, "Email"),
+        (TIKTOK_AUTH, "Tiktok"),
+        (APPLE_AUTH, "Apple"),
+    )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=255, blank=True, default='')
     role = models.CharField(max_length=20,
                             choices=ROLES_CHOICES,
                             default=USER)
+    auth_provider = models.CharField(max_length=50, default=EMAIL_AUTH)
     is_active = models.BooleanField(default=True)
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
