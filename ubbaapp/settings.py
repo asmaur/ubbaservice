@@ -10,23 +10,32 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
-from oauth2_provider import settings as oauth2_settings
+#from oauth2_provider import settings as oauth2_settings
 from pathlib import Path
+import os
+import firebase_admin
+from firebase_admin import credentials
+from dotenv import load_dotenv
+# import django
+# from django.utils.encoding import smart_str
+# django.utils.encoding.smart_text = smart_str
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(".envs/.django/.dev.env")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG") == "True"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 # custom user
 AUTH_USER_MODEL = 'account.User'
@@ -44,11 +53,13 @@ INSTALLED_APPS = [
 
 THIRD_PARTY_APPS = [
     "rest_framework",
+    # "drf_firebase_auth",
     "django_celery_beat",
-    'oauth2_provider',
-    'social_django',
-    'drf_social_oauth2',
+    #'oauth2_provider',
+    #'social_django',
+    #'drf_social_oauth2',
     'corsheaders',
+    'django_cleanup.apps.CleanupConfig',
 ]
 
 LOCAL_APPS = [
@@ -87,8 +98,8 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 # social_django
-                'social_django.context_processors.backends',
-                'social_django.context_processors.login_redirect',
+                # 'social_django.context_processors.backends',
+                # 'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -181,28 +192,32 @@ LOGGING = {
     },
 }
 
-AUTHENTICATION_BACKENDS = (
-    # Google  OAuth2
-    'social_core.backends.google.GoogleOAuth2',
-    'drf_social_oauth2.backends.DjangoOAuth2',
-    'django.contrib.auth.backends.ModelBackend',
-)
+# AUTHENTICATION_BACKENDS = (
+#     # Google  OAuth2
+#     'social_core.backends.google.GoogleOAuth2',
+#     'drf_social_oauth2.backends.DjangoOAuth2',
+#     'django.contrib.auth.backends.ModelBackend',
+# )
 
 # Google configuration
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv("SOCIAL_AUTH_GOOGLE_OAUTH2_KEY")
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv("SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET") 
+# SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv("SOCIAL_AUTH_GOOGLE_OAUTH2_KEY")
+# SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv("SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET")
 
 # Define SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE to get extra permissions from Google.
-SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile',
-]
+# SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+#     'https://www.googleapis.com/auth/userinfo.email',
+#     'https://www.googleapis.com/auth/userinfo.profile',
+# ]
 
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',  
-        'drf_social_oauth2.authentication.SocialAuthentication',
+        #'account.firebase_auth.FirebaseAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        #'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+        #'drf_social_oauth2.authentication.SocialAuthentication',
+        # 'drf_firebase_auth.authentication.FirebaseAuthentication',
     )
 }
 CORS_ALLOWED_ORIGINS = [
@@ -216,3 +231,17 @@ CORS_ORIGIN_ALLOW_ALL = True
 # oauth2_settings.DEFAULTS['ACCESS_TOKEN_EXPIRE_SECONDS'] = 60*60*12
 
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
+cred = credentials.Certificate({
+    "type": "service_account",
+    "project_id": os.environ.get('PROJECT_ID'),
+    "private_key_id": os.environ.get('PRIVATE_KEY_ID'),
+    "private_key": os.environ.get('PRIVATE_KEY').rstrip('"').lstrip('"').replace(r'\n', '\n'),
+    "client_email": os.environ.get('CLIENT_EMAIL'),
+    "client_id": os.environ.get('CLIENT_ID'),
+    "auth_uri": os.environ.get('AUTH_URI'),
+    "token_uri": os.environ.get('TOKEN_URI'),
+    "auth_provider_x509_cert_url": os.environ.get('AUTH_PROVIDER_X509_CERT_URL'),
+    "client_x509_cert_url": os.environ.get('CLIENT_X509_CERT_URL'),
+})
+
+default_app = firebase_admin.initialize_app(cred)

@@ -1,5 +1,5 @@
 import re
-from rest_framework import viewsets, views
+from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, JSONParser
@@ -9,12 +9,13 @@ from rest_framework import filters
 from django.shortcuts import Http404, get_object_or_404
 from rest_framework.validators import ValidationError
 from rest_framework import permissions
-from oauth2_provider.contrib.rest_framework.authentication import (
-    OAuth2Authentication
-)
-from oauth2_provider.contrib.rest_framework.permissions import (
-    TokenHasReadWriteScope, TokenHasScope
-)
+from account.firebase_auth import FirebaseAuthentication
+# from oauth2_provider.contrib.rest_framework.authentication import (
+#     OAuth2Authentication
+# )
+# from oauth2_provider.contrib.rest_framework.permissions import (
+#     TokenHasReadWriteScope, TokenHasScope
+# )
 import traceback
 from core.exceptions import (
     RegisteredTagException,
@@ -39,10 +40,8 @@ from core.models import (
     Contact
 )
 from .serializers import (
-    # PetPublicSerializer,
     PetSerializer,
     PetDetailSerializer,
-    PetMiniSerializer,
     TutorSerializer,
     PetnameSerializer,
     ContactSerializer,
@@ -51,6 +50,7 @@ from .serializers import (
 from account.models import (
     User
 )
+from ..permissions import UpdateOwnPet
 
 
 class ReadOnly(permissions.BasePermission):
@@ -81,18 +81,18 @@ class PetPublic(viewsets.ViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Pet.DoesNotExist:
             return Response(
-                data=PetErrorMessage.get("not_found"),
+                PetErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Tag.DoesNotExist:
             return Response(
-                data=TagErrorMessage.get("not_found"),
+                TagErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -109,20 +109,19 @@ class PetPublic(viewsets.ViewSet):
             request (_type_): _description_
         """
         try:
-            # data = request.data
-            tag = Tag.objects.get(uuid=pk)#data.get("uuid"))
-            # if tag.exported:
+            tag = Tag.objects.get(uuid=pk)
             serializer = TagSerializer(tag)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except Tag.DoesNotExist:
+        except Tag.DoesNotExist as e:
+            traceback.print_exception(e)
             return Response(
-                data=TagErrorMessage.get("not_found"),
+                TagErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -132,65 +131,20 @@ class PetPublic(viewsets.ViewSet):
             )
 
 
-
-# class PetProfileDetail(APIView):
-#     """Public profile view for pet by Id
-
-#     Args:
-#         APIView (_type_): _description_
-#     """
-
-#     def get_object(self, petname):
-#         try:
-#             petname = Petname.objects.get(pet_name=petname)
-#             return Pet.objects.get(petname=petname)
-#         except Pet.DoesNotExist:
-#             raise Http404
-#         except Petname.DoesNotExist:
-#             raise Http404
-
-#     def get(self, request, petname, format=None):
-#         try:
-#             pet = self.get_object(petname)
-#             serializer = PetPublicSerializer(pet)
-
-#             return Response(serializer.data, status=status.HTTP_200_OK)
-#         except Http404:
-#             return Response(
-#                 {"detail": "Pet not found", "registred": False},
-#                 status=status.HTTP_404_NOT_FOUND
-#             )
-
-
-# class PetProfileDetailView(viewsets.ViewSet):
-#     serializer_class = PetSerializer
-#     queryset = Pet.objects.all()
-
-
 class PetViewset(viewsets.ModelViewSet):
     serializer_class = PetSerializer
     queryset = Pet.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
-    authentication_classes = [OAuth2Authentication]
+    permission_classes = [
+        permissions.IsAuthenticatedOrReadOnly,
+        # UpdateOwnPet
+    ]
+    authentication_classes = [FirebaseAuthentication]
     parser_classes = [MultiPartParser, JSONParser]
     pagination_class = StandardResultsSetPagination
 
-    # def get_serializer_class(self):
-    #     if self.action in ('list', 'create', 'update', 'patch'):
-    #         return PetSerializer
-    #     else:
-    #         return PetDetailSerializer
-
     def get_queryset(self, ):
-        # request = self.get_serializer_context().get('request')
-        # uid = request.user.uid  #.get('uid')
         tutor = self.get_tutor()
-        return Pet.objects.filter(tutor=tutor)#tutor__id="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
-
-    # def get_filter_queryset(self, ):
-    #     request = self.get_serializer_context().get('request')
-    #     #uid = request.user.uid  #.get('uid')
-    #     return Transaction.objects.filter(uid=uid)
+        return Pet.objects.filter(tutor=tutor)
 
     def get_tutor(self,):
         request = self.get_serializer_context().get('request')
@@ -202,8 +156,7 @@ class PetViewset(viewsets.ModelViewSet):
             tag = Tag.objects.get(
                 uuid=data.pop("tag"),
             )
-            tutor = Tutor.objects.get(pk="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
-            # self.get_tutor()
+            tutor = self.get_tutor()
 
             if tag.registered:
                 raise RegisteredTagException
@@ -224,30 +177,30 @@ class PetViewset(viewsets.ModelViewSet):
         except Tag.DoesNotExist as e:
             traceback.print_exception(e)
             return Response(
-                data=TagErrorMessage.get("not_found"),
+                TagErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Tutor.DoesNotExist as e:
             traceback.print_exception(e)
             return Response(
-                data=TutorErrorMessage.get("not_found"),
+                TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except RegisteredTagException:
             return Response(
-                data=TagErrorMessage.get("already_registered"),
+                TagErrorMessage.get("already_registered"),
                 status=status.HTTP_400_BAD_REQUEST
             )
         except ValidationError as ex:
             traceback.print_exception(ex)
             return Response(
-                data=TutorErrorMessage.get("validation_error"),
+                TutorErrorMessage.get("validation_error"),
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -264,18 +217,18 @@ class PetViewset(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Pet.DoesNotExist:
             return Response(
-                data=PetErrorMessage.get("not_found"),
+                PetErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Tag.DoesNotExist:
             return Response(
-                data=TagErrorMessage.get("not_found"),
+                TagErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -286,17 +239,15 @@ class PetViewset(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         try:
-            # print(request.user)
             queryset = self.get_queryset()
-            # serializer = PetMiniSerializer(pets, many=True)
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = PetSerializer(
-                    page,
-                    many=True,
-                    context={'request': request}
-                )
-                return self.get_paginated_response(serializer.data)
+            # page = self.paginate_queryset(queryset)
+            # if page is not None:
+            #     serializer = PetSerializer(
+            #         page,
+            #         many=True,
+            #         context={'request': request}
+            #     )
+            #     return self.get_paginated_response(serializer.data)
 
             serializer = PetSerializer(
                 queryset,
@@ -323,8 +274,11 @@ class PetViewset(viewsets.ModelViewSet):
                 uuid=data.pop("tag"),
             )
             pet = Pet.objects.get(tag=tag)
-            tutor = Tutor.objects.get(pk="dfbb9192-489c-44ba-bd4a-e70a4e873ff9")
-            # self.get_tutor()
+            tutor = self.get_tutor()
+
+            if pet.tutor.id is not tutor.id:
+                raise NotTutorException
+
             serializer = PetSerializer(
                 data={
                     "birth_date": data.pop("birth_date").split("T")[0],
@@ -344,7 +298,7 @@ class PetViewset(viewsets.ModelViewSet):
         except Tag.DoesNotExist as e:
             traceback.print_exception(e)
             return Response(
-                data=TagErrorMessage.get("not_found"),
+                TagErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Tutor.DoesNotExist as e:
@@ -357,13 +311,13 @@ class PetViewset(viewsets.ModelViewSet):
         except ValidationError as e:
             traceback.print_exception(e)
             return Response(
-                data=PetErrorMessage.get("validation_error"),
+                PetErrorMessage.get("validation_error"),
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -391,13 +345,13 @@ class PetViewset(viewsets.ModelViewSet):
             )
         except Http404:
             return Response(
-                data=PetErrorMessage.get("not_found"),
+                PetErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -419,13 +373,13 @@ class PetViewset(viewsets.ModelViewSet):
             )
         except Http404:
             return Response(
-                data=PetErrorMessage.get("not_found"),
+                PetErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -446,13 +400,13 @@ class PetViewset(viewsets.ModelViewSet):
             )
         except Http404:
             return Response(
-                data=PetErrorMessage.get("not_found"),
+                PetErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -495,10 +449,10 @@ class PetViewset(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK
             )
         except Pet.DoesNotExist:
-            return Response()
+            return Response(status=status.HTTP_404_NOT_FOUND)
         except Exception as ex:
             traceback.print_exception(ex)
-            return Response()
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(methods=["POST"], detail=False, url_path="/transfer/")
     def transfer(self, request, *args, **kwargs):
@@ -525,28 +479,28 @@ class PetViewset(viewsets.ModelViewSet):
             )
         except Tutor.DoesNotExist:
             return Response(
-                data=TutorErrorMessage.get("not_found"),
+                TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Tag.DoesNotExist:
             return Response(
-                data=TagErrorMessage.get("not_found"),
+                TagErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except NotTutorException:
             return Response(
-                data=TutorErrorMessage.get("not_tutor_error"),
+                TutorErrorMessage.get("not_tutor_error"),
                 status=status.HTTP_400_BAD_REQUEST
             )
         except AlreadyTutorException:
             return Response(
-                data=TutorErrorMessage.get("already_tutor_error"),
+                TutorErrorMessage.get("already_tutor_error"),
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -564,19 +518,20 @@ class PetViewset(viewsets.ModelViewSet):
         """
         try:
             data = request.data
+            print(data)
             tag = Tag.objects.get(uuid=data.get("uuid"))
             # if tag.exported:
             serializer = TagSerializer(tag)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Tag.DoesNotExist:
             return Response(
-                data=TagErrorMessage.get("not_found"),
+                TagErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -590,7 +545,7 @@ class TutorViewset(viewsets.ViewSet):
     serializer_class = TutorSerializer
     queryset = Tutor.objects.all()
     permission_classes = [permissions.IsAuthenticated]
-    authentication_classes = [OAuth2Authentication]
+    authentication_classes = [FirebaseAuthentication]
     parser_classes = [MultiPartParser, JSONParser]
 
     def list(self, request, *args, **kwargs):
@@ -603,13 +558,13 @@ class TutorViewset(viewsets.ViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Tutor.DoesNotExist:
             return Response(
-                data=TutorErrorMessage.get("not_found"),
+                TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -621,18 +576,22 @@ class TutorViewset(viewsets.ViewSet):
     @action(methods=["GET"], detail=False, url_path="/tutor/")
     def get_tutor(self, request, *args, **kwargs):
         try:
+            # user = User.objects.get(pk="5826a5ae-078a-4580-8e1d-9b1dbf7caf42") #ryry
             tutor = Tutor.objects.get(user=request.user)
-            return Response(TutorSerializer(tutor).data, status=status.HTTP_200_OK)
+            return Response(
+                TutorSerializer(tutor).data,
+                status=status.HTTP_200_OK
+            )
         except Tutor.DoesNotExist as e:
             traceback.print_exception(e)
             return Response(
-                data=TutorErrorMessage.get("not_found"),
+                TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -641,8 +600,6 @@ class TutorViewset(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-            
-    
     @action(methods=["POST"], detail=False)
     def find_tutor(self, request, *args, **kwargs):
         try:
@@ -656,19 +613,19 @@ class TutorViewset(viewsets.ViewSet):
         except User.DoesNotExist as e:
             traceback.print_exception(e)
             return Response(
-                data=UserErrorMessage.get("not_found"),
+                UserErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Tutor.DoesNotExist as e:
             traceback.print_exception(e)
             return Response(
-                data=TutorErrorMessage.get("not_found"),
+                TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -691,7 +648,7 @@ class TutorViewset(viewsets.ViewSet):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
         except Tutor.DoesNotExist:
-            return Response()
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=["PATCH"], detail=True, url_path="/tutor-image/")
     def update_image(self, request, pk=None, *args, **kwargs):
@@ -705,13 +662,13 @@ class TutorViewset(viewsets.ViewSet):
             )
         except Http404:
             return Response(
-                data=TutorErrorMessage.get("not_found"),
+                TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -724,8 +681,8 @@ class TutorViewset(viewsets.ViewSet):
 class PetNameViewset(viewsets.ViewSet):
     serializer_class = PetnameSerializer
     queryset = Pet.objects.all()
-    permission_classes = []
-    authentication_classes = []
+    # permission_classes = [permissions.IsAuthenticated]
+    # authentication_classes = [FirebaseAuthentication]#OAuth2Authentication]
     filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     filterset_fields = ["petname"]
     search_fields = ["petname"]
@@ -754,18 +711,14 @@ class ContactViewset(viewsets.ViewSet):
     serializer_class = ContactSerializer
     queryset = Contact.objects.all()
     permission_classes = [permissions.IsAuthenticated]
-    authentication_classes = [OAuth2Authentication]
-
-    # def get_queryset(self, ):
-    #     request = self.get_serializer_context().get('request')
-    #     return Contact.objects.filter(tutor__id=1)
+    authentication_classes = [FirebaseAuthentication]
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         return context
 
     def get_tutor(self, request):
-        # request = self.get_serializer_context().get('request')
+        # user = User.objects.get(pk="5826a5ae-078a-4580-8e1d-9b1dbf7caf42")
         return Tutor.objects.get(user=request.user)
 
     def list(self, request, *args, **kwargs):
@@ -777,7 +730,7 @@ class ContactViewset(viewsets.ViewSet):
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -806,19 +759,19 @@ class ContactViewset(viewsets.ViewSet):
         except Tutor.DoesNotExist as ex:
             traceback.print_exception(ex)
             return Response(
-                data=TutorErrorMessage.get("not_found"),
+                TutorErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except ValidationError as ex:
             traceback.print_exception(ex)
             return Response(
-                data=ContactErrorMessage.get("validation_error"),
+                ContactErrorMessage.get("validation_error"),
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
             traceback.print_exception(e)
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -835,7 +788,7 @@ class ContactViewset(viewsets.ViewSet):
             whatsapp_number = re.sub(r"\D", "", phone)
             contact = Contact.objects.get(pk=pk)
             serializer = ContactSerializer(
-                data={**data, "whatsapp": whatsapp_number},
+                {**data, "whatsapp": whatsapp_number},
                 partial=True,
                 instance=contact
             )
@@ -844,17 +797,17 @@ class ContactViewset(viewsets.ViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
         except ValidationError:
             return Response(
-                data=ContactErrorMessage.get("validation_error"),
+                ContactErrorMessage.get("validation_error"),
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Contact.DoesNotExist:
             return Response(
-                data=ContactErrorMessage.get("not_found"),
+                ContactErrorMessage.get("not_found"),
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),
@@ -868,7 +821,7 @@ class ContactViewset(viewsets.ViewSet):
             contact = Contact.objects.get(pk=pk)
             contact.delete()
             return Response(
-                data=ContactErrorMessage.get("deleted"),
+                ContactErrorMessage.get("deleted"),
                 status=status.HTTP_204_NO_CONTENT
             )
         except Contact.DoesNotExist:
@@ -878,7 +831,7 @@ class ContactViewset(viewsets.ViewSet):
             )
         except Exception as e:
             return Response(
-                data={
+                {
                     "error_type": type(e).__name__,
                     "message": str(e),
                     "at": traceback.format_exc(),

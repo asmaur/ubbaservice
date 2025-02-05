@@ -21,7 +21,3 @@ class CustomPagination(LimitOffsetPagination):
     limit_query_param = 'limit'
     offset_query_param = 'offset'
     max_limit = 50
-
-# class CustomPagedResponse(paginated_response.PaginatedResponse):
-#     def get_paginated_response(self,):
-#         return super()._get_paginated_response()

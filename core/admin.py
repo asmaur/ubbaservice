@@ -45,7 +45,7 @@ class TagAdmin(admin.ModelAdmin):
 
 @admin.register(Pet)
 class PetAdmin(admin.ModelAdmin):
-    list_display = ["name", "nickname", "petname", "tag", "tutor", "veterinarian", "castration", "alive", "lost"]
+    list_display = ["name", "nickname", "petname", "tag", "tutor", "castration", "alive", "lost"]
     list_filter = ["castration", "alive", "lost"]
     search_fields = ["name", "nickname", "petname"]
 

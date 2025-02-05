@@ -38,14 +38,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     MANAGER = 'manager'
     PETSITTER = 'petsitter'
     VETERINARIAN = 'veterinarian'
-    
+
     GOOGLE_AUTH = "google",
     FACEBOOK_AUTH = "facebook",
     TWITTER_AUTH = "twiter",
     EMAIL_AUTH = "email",
     TIKTOK_AUTH = "tiktok",
     APPLE_AUTH = "apple",
-    
 
     ROLES_CHOICES = (
         (AGENT, 'Agent'),
@@ -58,11 +57,17 @@ class User(AbstractBaseUser, PermissionsMixin):
         (GOOGLE_AUTH, "Google"),
         (FACEBOOK_AUTH, "Facebook"),
         (TWITTER_AUTH, "Twitter"),
-        (EMAIL_AUTH, "Email"),
+        (EMAIL_AUTH, "Firebase"),
         (TIKTOK_AUTH, "Tiktok"),
         (APPLE_AUTH, "Apple"),
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uid = models.CharField(
+        max_length=255,
+        db_index=True,
+        blank=True,
+        null=True
+    )
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=255, blank=True, default='')
     role = models.CharField(max_length=20,

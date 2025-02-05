@@ -7,7 +7,7 @@ class TagForm(forms.Form):
     error_css_class = "errors"
     # css_classes = "form-row"
     quantity = forms.IntegerField(
-        #initial="",
+        # initial="",
         required=True,
         error_messages={"required": "this field is required."},
         # widget=forms.TextInput(attrs={'class': 'form-row'})
@@ -53,7 +53,7 @@ class ExportTagForm(forms.Form):
         required=True,
         error_messages={"required": "This field is required."},
     )
-    
+
     def clean_quantity(self,):
         value = self.cleaned_data["quantity"]
         if value <= 0:

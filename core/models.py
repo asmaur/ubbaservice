@@ -66,8 +66,6 @@ def rup_validate(numbers):
         return False
 
     #  Verifica se o CPF tem todos os números iguais, ex: 111.111.111-11
-    #  Esses CPFs são considerados inválidos mas passam na validação dos dígitos
-    #  Antigo código para referência: if all(cpf[i] == cpf[i+1] for i in range (0, len(cpf)-1))
     if cpf == cpf[::-1]:
         return False
 
@@ -81,7 +79,6 @@ def rup_validate(numbers):
 
 
 def rup_generate():
-    #  Gera os primeiros nove dígitos (e certifica-se de que não são todos iguais)
     while True:
         cpf = [randint(0, 9) for _ in range(9)]
         if cpf != cpf[::-1]:
@@ -99,7 +96,75 @@ def rup_generate():
 
 
 class Address(models.Model):
-    street_name = models.CharField(_(""), max_length=50)
+    country = models.CharField(
+        _("Country"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    state = models.CharField(
+        _("State"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    city = models.CharField(
+        _("City"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    neighbor = models.CharField(
+        _("Neighbor"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    street = models.CharField(
+        _("Street"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    number = models.CharField(
+        _("Number"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    complement = models.CharField(
+        _("Complemento"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    zip_code = models.CharField(
+        _("Zip"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+
+    tutor = models.ForeignKey(
+        "core.Tutor",
+        related_name="addresses",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True
+    )
+    veterinarian = models.ForeignKey(
+        "care.Veterinarian",
+        related_name="addresses",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True
+    )
+
+    class Meta:
+        db_table = ''
+        managed = True
+        verbose_name = 'Address'
+        verbose_name_plural = 'Addresses'
 
 
 class Tag(models.Model):
@@ -113,6 +178,7 @@ class Tag(models.Model):
     )
     registered = models.BooleanField(_("Scanned"), default=False)
     exported = models.BooleanField(_("Exported"), default=False)
+    active = models.BooleanField(_("Active"), default=True)
     url = models.URLField(_("tag url"), max_length=200)
     created_at = models.DateField(
         _("Created at"),
@@ -163,6 +229,24 @@ class Tutor(models.Model):
         null=True
     )
 
+    phone = models.CharField(
+        _("Phone number"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    # whatsapp = models.CharField(
+    #     _("whatsapp number"),
+    #     max_length=200,
+    #     blank=True,
+    #     null=True
+    # )
+    instagram = models.CharField(
+        _("instagram"), max_length=200,
+        blank=True,
+        null=True
+    )
+
     class Meta:
         db_table = ''
         managed = True
@@ -177,8 +261,7 @@ class Contact(models.Model):
     name = models.CharField(
         _("name"),
         max_length=50,
-        blank=True,
-        null=True
+        blank=True
     )
     email = models.EmailField(
         _("email"),
@@ -186,43 +269,88 @@ class Contact(models.Model):
         blank=True,
         null=True
     )
-    phone = models.CharField(_(""), max_length=50)
-    social = models.BooleanField(_(""), default=True)
-    emergency = models.BooleanField(_(""), default=False)
-    whatsapp = models.CharField(_(""), max_length=200, blank=True, null=True)
-    # instagram = models.URLField(_(""), max_length=200, blank=True, null=True)
-    # twitter = models.URLField(_(""), max_length=200, blank=True, null=True)
-    # facebook = models.URLField(_(""), max_length=200, blank=True, null=True)
-    # tiktok = models.URLField(_(""), max_length=200, blank=True, null=True)
-    instagram = models.CharField(_(""), max_length=200, blank=True, null=True)
-    twitter = models.CharField(_(""), max_length=200, blank=True, null=True)
-    facebook = models.CharField(_(""), max_length=200, blank=True, null=True)
-    tiktok = models.CharField(_(""), max_length=200, blank=True, null=True)
-    youtube = models.CharField(_(""), max_length=200, blank=True, null=True)
-    snapchat = models.CharField(_(""), max_length=200, blank=True, null=True)
-    wechat = models.CharField(_(""), max_length=200, blank=True, null=True)
-    telegram = models.CharField(_(""), max_length=200, blank=True, null=True)
-    threads = models.CharField(_(""), max_length=200, blank=True, null=True)
-    mine = models.BooleanField(_(""), default=True)
+
+    phone = models.CharField(_("Phone number"), max_length=50)
+    social = models.BooleanField(_("is whatsapp?"), default=True)
+    emergency = models.BooleanField(_("is emergency number?"), default=False)
+    whatsapp = models.CharField(
+        _("whatsapp number"),
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    instagram = models.CharField(
+        _("instagram"), max_length=200,
+        blank=True,
+        null=True
+    )
+    twitter = models.CharField(
+        _("twitter"), max_length=200,
+        blank=True,
+        null=True
+    )
+    facebook = models.CharField(
+        _("facebook"),
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    tiktok = models.CharField(
+        _("tiktok"),
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    youtube = models.CharField(
+        _("youtube"),
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    snapchat = models.CharField(
+        _("snapchat"),
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    wechat = models.CharField(
+        _("wechat"),
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    telegram = models.CharField(
+        _("telegram"),
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    threads = models.CharField(
+        _("threads"),
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    mine = models.BooleanField(_("is this number yours?"), default=True)
     tutor = models.ForeignKey(
         "core.Tutor",
         related_name="contacts",
         on_delete=models.CASCADE
     )
-    address = models.ForeignKey(
-        "core.Address",
-        verbose_name=_(""),
-        on_delete=models.CASCADE,
-        related_name="contacts",
-        blank=True,
-        null=True
-    )
+    # address = models.ForeignKey(
+    #     "core.Address",
+    #     verbose_name=_(""),
+    #     on_delete=models.CASCADE,
+    #     related_name="contacts",
+    #     blank=True,
+    #     null=True
+    # )
 
     class Meta:
         db_table = ''
         managed = True
-        verbose_name = 'Contact'
-        verbose_name_plural = 'Contacts'
+        verbose_name = 'contact'
+        verbose_name_plural = 'contacts'
         ordering = ("name",)
 
     def __str__(self):
@@ -247,8 +375,6 @@ class Pet(models.Model):
     # genre
     MALE = 'Male'
     FEMALE = 'Female'
-    
-
     # pet type
     DOG = 'Dog'
     CAT = 'Cat'
@@ -277,13 +403,13 @@ class Pet(models.Model):
         verbose_name=_("UUID"),
         on_delete=models.CASCADE
     )
-    rup = models.CharField(
-        _("Registro Uni. Pet"), 
-        max_length=15, 
-        unique=True,
-        default=rup_generate,
-        validators=[rup_validate]
-    )
+    # ru = models.CharField(
+    #     _("Registro Univ"),
+    #     max_length=15,
+    #     unique=True,
+    #     default=rup_generate,
+    #     validators=[rup_validate]
+    # )
     petname = models.OneToOneField(
         "core.Petname",
         blank=True,
@@ -300,6 +426,18 @@ class Pet(models.Model):
         max_length=20,
         choices=PET_TYPE_CHOICES,
         default=DOG
+    )
+    rg_link = models.CharField(
+        _("RG Pet Link"),
+        max_length=250,
+        blank=True,
+        null=True
+    )
+    rg_numero = models.CharField(
+        _("RG Pet Link"),
+        max_length=50,
+        blank=True,
+        null=True
     )
     name = models.CharField(max_length=50)
     race = models.CharField(max_length=50)
@@ -334,13 +472,13 @@ class Pet(models.Model):
         null=True,
         on_delete=models.SET_NULL
     )
-    veterinarian = models.ForeignKey(
-        "care.Veterinarian",
-        verbose_name=_("Vet"),
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True
-    )
+    # veterinarian = models.ForeignKey(
+    #     "care.Veterinarian",
+    #     verbose_name=_("Vet"),
+    #     on_delete=models.SET_NULL,
+    #     blank=True,
+    #     null=True
+    # )
 
     joined_date = models.DateTimeField(
         _(""),

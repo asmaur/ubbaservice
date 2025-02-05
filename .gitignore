@@ -138,4 +138,9 @@ GitHub.sublime-settings
 .history
 migrations
 migrations/*.py
-.envs
+.envs/*
+*.env
+*.json
+gallery
+.idea
+*.Identifier

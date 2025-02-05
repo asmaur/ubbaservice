@@ -15,6 +15,52 @@ class Veterinarian(models.Model):
     #     related_name="vets",
     #     on_delete=models.CASCADE
     # )
+    email = models.EmailField(
+        _("email"),
+        max_length=254,
+        blank=True,
+        null=True
+    )
+    phone = models.CharField(
+        _("Phone"),
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    instagram = models.URLField(
+        _("Instagram"), max_length=200,
+        blank=True,
+        null=True
+    )
+    tiktok = models.URLField(
+        _("Tiktok"),
+        max_length=200,
+        blank=True,
+        null=True
+    )
+    image = models.ImageField(
+        _(""),
+        upload_to="vets_storage",
+        height_field=None,
+        width_field=None,
+        max_length=None,
+        blank=True,
+        null=True
+    )
+    tutor = models.ForeignKey(
+        "core.Tutor",
+        related_name="vets",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        db_table = ''
+        managed = True
+        verbose_name = 'vet'
+        verbose_name_plural = 'vets'
+        ordering = ("doctor_name",)
 
     def __str__(self):
         return self.doctor_name
@@ -55,13 +101,13 @@ class Contact(models.Model):
         blank=True,
         null=True
     )
-    address = models.ForeignKey(
-        "core.Address",
-        verbose_name=_("Address"),
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True
-    )
+    # address = models.ForeignKey(
+    #     "core.Address",
+    #     verbose_name=_("Address"),
+    #     on_delete=models.CASCADE,
+    #     blank=True,
+    #     null=True
+    # )
     veterinarian = models.ForeignKey(
         "care.Veterinarian",
         verbose_name=_("Vet"),
@@ -114,6 +160,38 @@ class Vaccine(models.Model):
         managed = True
         verbose_name = 'Vaccine'
         verbose_name_plural = 'Vaccines'
+
+    def __str__(self):
+        return self.name
+
+
+class Vaccination(models.Model):
+    # vaccine/profilaxia/medication
+    name = models.CharField(_(""), max_length=50)
+    lot = models.CharField(_(""), max_length=50)
+    dose = models.CharField(_("Dose"), max_length=15)
+    hospital_name = models.CharField(_("Clinic name"), max_length=50)
+    doctor_crmv = models.CharField(_("Dr. CRMV"), max_length=15)
+    neighborhood = models.CharField(_("Neighborhood"), max_length=50)
+    municipality = models.CharField(_("Municipality"), max_length=50)
+    state = models.CharField(_("state"), max_length=50)
+    country = models.CharField(_("country"), max_length=50, default="Brasil")
+    strategy = models.CharField(_("strategy"), max_length=15)
+    doctor_name = models.CharField(_("Dr. Name"), max_length=50)
+    pet = models.ForeignKey(
+        "core.Pet",
+        on_delete=models.CASCADE
+    )
+    injection_date = models.DateField(
+        _(""),
+        auto_now=False,
+        auto_now_add=False
+    )
+    created_date = models.DateTimeField(
+        _(""),
+        auto_now=False,
+        auto_now_add=True
+    )
 
     def __str__(self):
         return self.name
@@ -283,3 +361,32 @@ class Record(models.Model):
         indexes = [
             models.Index(fields=["content_type", "object_id"])
         ]
+
+
+class VaccinationCard(models.Model):
+    pet = models.OneToOneField(
+        "core.Pet",
+        related_name="vaccines",
+        on_delete=models.CASCADE
+    )
+    # image = models.ForeignKey(
+    #     "care.Photo",
+    #     verbose_name=_(""),
+    #     on_delete=models.CASCADE
+    # )
+    created_date = models.DateTimeField(auto_now_add=True)
+    updated_date = models.DateTimeField(auto_now=True)
+
+
+class Photo(models.Model):
+    image = models.ImageField(
+        _("vaccine card"),
+        upload_to="vaccine_cards"
+    )
+    vaccines = models.ForeignKey(
+        "care.VaccinationCard",
+        verbose_name=_(""),
+        on_delete=models.CASCADE,
+        related_name="cards"
+    )
+    created_date = models.DateTimeField(auto_now_add=True)

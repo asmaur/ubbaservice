@@ -6,7 +6,7 @@ from core.models import (
     Petname,
     Tag
 )
-from care.v1.serializers import VetSerializer
+from care.v1.serializers import VetSerializer, VaccineCardSerializer
 
 
 class PetnameSerializer(ModelSerializer):
@@ -39,6 +39,7 @@ class ContactPublicSerializer(ModelSerializer):
             "youtube",
             "snapchat",
             "wechat",
+            "whatsapp",
             "telegram",
             "threads"
         )
@@ -70,6 +71,7 @@ class ContactSerializer(ModelSerializer):
 
 class TutorPublicSerializer(ModelSerializer):
     contacts = ContactPublicSerializer(many=True)
+    vets = VetSerializer(many=True)
 
     class Meta:
         model = Tutor
@@ -78,11 +80,15 @@ class TutorPublicSerializer(ModelSerializer):
             "name",
             "email",
             "image",
-            "contacts"
+            "contacts",
+            "vets"
         )
 
 
 class TutorSerializer(ModelSerializer):
+    contacts = ContactPublicSerializer(many=True)
+    vets = VetSerializer(many=True)
+
     class Meta:
         model = Tutor
         fields = "__all__"
@@ -98,13 +104,14 @@ class PetPublicSerializer(ModelSerializer):
     tutor = TutorPublicSerializer()
     petname = PetNameSerializer()
     tag = TagSerializer()
-    vet = VetSerializer()
+    vet = VetSerializer(many=True)
+    # vaccines = VaccineCardSerializer()
 
     class Meta:
         model = Pet
         fields = (
                 "tag",
-                "rup",
+                # "rup",
                 "name",
                 "race",
                 "birth_date",
@@ -113,7 +120,8 @@ class PetPublicSerializer(ModelSerializer):
                 "lost",
                 "image",
                 "petname",
-                "tutor"
+                "tutor",
+                "vaccines"
         )
 
 
@@ -124,7 +132,7 @@ class PetSerializer(ModelSerializer):
         model = Pet
         fields = (
             "id",
-            "rup",
+            # "rup",
             "tag",
             "name",
             "nickname",
@@ -154,7 +162,7 @@ class PetMiniSerializer(ModelSerializer):
         fields = (
             # "id",
             "tag",
-            "rup",
+            # "rup",
             "name",
             "registered",
             "race",
@@ -168,15 +176,16 @@ class PetMiniSerializer(ModelSerializer):
 
 class PetDetailSerializer(ModelSerializer):
     tag = TagSerializer()
-    tutor = TutorPublicSerializer()
+    tutor = TutorSerializer()
     petname = PetnameSerializer()
-    veterinarian = VetSerializer()
+    # vets = VetSerializer(many=True)
+    # vaccines = VaccineCardSerializer()
 
     class Meta:
         model = Pet
         fields = (
             "id",
-            "rup",
+            # "rup",
             "name",
             "nickname",
             "race",
@@ -193,5 +202,6 @@ class PetDetailSerializer(ModelSerializer):
             "tag",
             "petname",
             "tutor",
-            "veterinarian"
+            # "vets",
+            # "vaccines"
         )

@@ -23,10 +23,11 @@ from .tag_admin import TagBulkCreate
 admin.site.__class__ = TagBulkCreate
 urlpatterns = [
     path("api/v1/", include("core.v1.urls")),
+    path("api/v1/", include("care.v1.urls")),
     path('admin/', admin.site.urls),
     path('auth/', include('rest_framework.urls')),
-    path('auth/', include('drf_social_oauth2.urls', namespace='drf')),
-    path('auth/', include('account.v1.urls')),
+    #path('auth/', include('drf_social_oauth2.urls', namespace='drf')),
+    path('api/v1/', include('account.v1.urls')),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

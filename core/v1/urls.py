@@ -8,7 +8,7 @@ router = SimpleRouter()
 
 router.register('pets', views.PetViewset)
 router.register('tutors', views.TutorViewset)
-router.register('tutors-contact', views.ContactViewset)
+router.register('contacts', views.ContactViewset)
 router.register('p', views.PetPublic, basename="p")
 
 urlpatterns = [
